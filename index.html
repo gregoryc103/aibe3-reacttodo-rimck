@@ -4,8 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>React Todo App with Chat</title>
+    <title>Vite + React</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'wood-brown': '#8b4513',
+              'wood-dark': '#654321',
+              'wood-light': '#a0522d',
+              'cream': '#f5f5dc',
+              'success': '#32cd32',
+              'warning': '#ffd93d',
+              'danger': '#ff6b6b',
+              'info': '#45b7d1',
+            }
+          }
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

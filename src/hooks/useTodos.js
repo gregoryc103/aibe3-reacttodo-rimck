@@ -1,104 +1,221 @@
-import { useEffect } from 'react';
-import { useTodoContext } from '../contexts/TodoContext';
+// src/hooks/useTodos.js
+import { useTodoContext } from '../TodoContext'
 
-const STORAGE_KEY = 'react-todo-app-todos';
+function useTodos() {
+  // Context에서 상태와 setter 가져오기
+  const {
+    todos,
+    setTodos,
+    teamMembers,
+    inputText,
+    setInputText,
+    checkedIds,
+    setCheckedIds,
+    selectedAssignee,
+    selectedPriority,
+    nextId,
+    inputRef,
+  } = useTodoContext()
 
-export const useTodos = () => {
-  const { todos, addTodo, updateTodo, deleteTodo, toggleTodo, setTodos } = useTodoContext();
+  const handleChange = (e) => {
+    setInputText(e.target.value)
+  }
 
-  // 로컬 스토리지에서 todos 로드
-  useEffect(() => {
-    const savedTodos = localStorage.getItem(STORAGE_KEY);
-    if (savedTodos) {
-      try {
-        const parsedTodos = JSON.parse(savedTodos);
-        setTodos(parsedTodos);
-      } catch (error) {
-        console.error('Failed to parse saved todos:', error);
-      }
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit()
     }
-  }, [setTodos]);
+  }
 
-  // todos 변경 시 로컬 스토리지에 저장
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-  }, [todos]);
+  const handleSubmit = () => {
+    if (!inputText.trim()) {
+      alert('할 일을 입력해주세요.')
+      inputRef.current?.focus()
+      return
+    }
 
-  // 새 todo 추가
-  const createTodo = (text) => {
-    if (!text.trim()) return;
-    addTodo({ text: text.trim() });
-  };
+    if (teamMembers.length === 0) {
+      alert('팀 멤버를 먼저 추가해주세요.')
+      return
+    }
 
-  // todo 수정
-  const editTodo = (id, newText) => {
-    if (!newText.trim()) return;
-    updateTodo(id, { text: newText.trim() });
-  };
+    if (checkedIds.length === 0) {
+      // 신규 추가
+      const newTodo = {
+        id: nextId.current,
+        text: inputText,
+        completed: false,
+        assignee: selectedAssignee,
+        priority: selectedPriority,
+      }
+      setTodos([newTodo, ...todos])
+      nextId.current += 1
+    } else {
+      // 다중 수정
+      const updatedTodos = todos.map((todo) =>
+        checkedIds.includes(todo.id)
+          ? {
+              ...todo,
+              text: inputText,
+              assignee: selectedAssignee,
+              priority: selectedPriority,
+            }
+          : todo
+      )
+      setTodos(updatedTodos)
+      setCheckedIds([])
+    }
 
-  // todo 삭제
-  const removeTodo = (id) => {
-    deleteTodo(id);
-  };
+    setInputText('')
+  }
 
-  // todo 완료 상태 토글
-  const toggleComplete = (id) => {
-    toggleTodo(id);
-  };
+  const handleCheck = (id) => {
+    if (checkedIds.includes(id)) {
+      setCheckedIds(checkedIds.filter((checkedId) => checkedId !== id))
+    } else {
+      setCheckedIds([...checkedIds, id])
+    }
+  }
 
-  // 완료된 todos 가져오기
-  const getCompletedTodos = () => {
-    return todos.filter(todo => todo.completed);
-  };
+  const handleToggleAll = (filteredTodos) => {
+    if (checkedIds.length === filteredTodos.length) {
+      setCheckedIds([])
+    } else {
+      setCheckedIds(filteredTodos.map((todo) => todo.id))
+    }
+  }
 
-  // 미완료된 todos 가져오기
-  const getActiveTodos = () => {
-    return todos.filter(todo => !todo.completed);
-  };
+  const handleComplete = (id) => {
+    setTodos(
+      todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    )
+  }
 
-  // 전체 todos 개수
-  const getTotalCount = () => {
-    return todos.length;
-  };
+  const handleRemove = (id) => {
+    setTodos(todos.filter((todo) => todo.id !== id))
+    setCheckedIds(checkedIds.filter((checkedId) => checkedId !== id))
+  }
 
-  // 완료된 todos 개수
-  const getCompletedCount = () => {
-    return getCompletedTodos().length;
-  };
+  const handleBulkComplete = () => {
+    if (checkedIds.length === 0) {
+      alert('완료할 항목을 선택해주세요.')
+      return
+    }
 
-  // 미완료된 todos 개수
-  const getActiveCount = () => {
-    return getActiveTodos().length;
-  };
+    const selectedTodos = todos.filter((todo) => checkedIds.includes(todo.id))
+    const completedCount = selectedTodos.filter((todo) => todo.completed).length
+    const incompleteCount = selectedTodos.length - completedCount
 
-  // 모든 todos 완료 상태로 변경
-  const markAllCompleted = () => {
-    const activeTodos = getActiveTodos();
-    activeTodos.forEach(todo => {
-      toggleTodo(todo.id);
-    });
-  };
+    let message = ''
+    let shouldComplete = true
 
-  // 완료된 todos 일괄 삭제
-  const clearCompleted = () => {
-    const completedTodos = getCompletedTodos();
-    completedTodos.forEach(todo => {
-      deleteTodo(todo.id);
-    });
-  };
+    if (completedCount === selectedTodos.length) {
+      // 모든 선택 항목이 완료됨 → 미완료로 변경
+      message = `선택된 ${checkedIds.length}개의 항목을 미완료로 변경하시겠습니까?`
+      shouldComplete = false
+    } else if (incompleteCount === selectedTodos.length) {
+      // 모든 선택 항목이 미완료 → 완료로 변경
+      message = `선택된 ${checkedIds.length}개의 항목을 완료로 변경하시겠습니까?`
+      shouldComplete = true
+    } else {
+      // 혼합 상태 → 모두 완료로 변경
+      message = `선택된 ${checkedIds.length}개의 항목을 모두 완료로 변경하시겠습니까?`
+      shouldComplete = true
+    }
+
+    const confirmComplete = window.confirm(message)
+    if (confirmComplete) {
+      setTodos(
+        todos.map((todo) =>
+          checkedIds.includes(todo.id)
+            ? { ...todo, completed: shouldComplete }
+            : todo
+        )
+      )
+      setCheckedIds([])
+    }
+  }
+
+  const handleBulkRemove = () => {
+    if (checkedIds.length === 0) {
+      alert('제거할 항목을 선택해주세요.')
+      return
+    }
+
+    const confirmRemove = window.confirm(
+      `선택된 ${checkedIds.length}개의 항목을 제거하시겠습니까?`
+    )
+    if (confirmRemove) {
+      setTodos(todos.filter((todo) => !checkedIds.includes(todo.id)))
+      setCheckedIds([])
+    }
+  }
+
+  const updateTodosOnMemberRemove = (memberName) => {
+    setTodos(todos.filter((todo) => todo.assignee !== memberName))
+    setCheckedIds([])
+  }
+
+  const getFilteredTodos = (filterAssignee, filterStatus) => {
+    let filtered = todos
+
+    // 담당자 필터
+    if (filterAssignee !== 'all') {
+      filtered = filtered.filter((todo) => todo.assignee === filterAssignee)
+    }
+
+    // 완료 상태 필터
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter((todo) => {
+        if (filterStatus === 'completed') return todo.completed
+        if (filterStatus === 'incomplete') return !todo.completed
+        return true
+      })
+    }
+
+    return filtered
+  }
+
+  const getOverallProgress = () => {
+    const totalTodos = todos.length
+    const completedTodos = todos.filter((todo) => todo.completed).length
+    return totalTodos > 0 ? Math.round((completedTodos / totalTodos) * 100) : 0
+  }
+
+  const getSelectedStatus = () => {
+    if (checkedIds.length === 0) return null
+
+    const selectedTodos = todos.filter((todo) => checkedIds.includes(todo.id))
+    const completedCount = selectedTodos.filter((todo) => todo.completed).length
+    const incompleteCount = selectedTodos.length - completedCount
+
+    if (completedCount === selectedTodos.length) return 'allCompleted'
+    if (incompleteCount === selectedTodos.length) return 'allIncomplete'
+    return 'mixed'
+  }
 
   return {
     todos,
-    createTodo,
-    editTodo,
-    removeTodo,
-    toggleComplete,
-    getCompletedTodos,
-    getActiveTodos,
-    getTotalCount,
-    getCompletedCount,
-    getActiveCount,
-    markAllCompleted,
-    clearCompleted
-  };
-};
+    inputText,
+    checkedIds,
+    inputRef,
+    setInputText,
+    handleSubmit,
+    handleChange,
+    handleKeyPress,
+    handleCheck,
+    handleToggleAll,
+    handleComplete,
+    handleRemove,
+    handleBulkComplete,
+    handleBulkRemove,
+    updateTodosOnMemberRemove,
+    getFilteredTodos,
+    getOverallProgress,
+    getSelectedStatus,
+  }
+}
+
+export default useTodos

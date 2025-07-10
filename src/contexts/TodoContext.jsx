@@ -42,9 +42,13 @@ export const TodoProvider = ({ children }) => {
       id: Date.now(),
       text: todo.text,
       completed: false,
+      priority: todo.priority || 'medium',
+      assignedTo: todo.assignedTo || null,
+      dueDate: todo.dueDate || null,
       createdAt: new Date().toISOString()
     };
     dispatch({ type: 'ADD_TODO', payload: newTodo });
+    return newTodo;
   };
 
   const updateTodo = (id, updates) => {

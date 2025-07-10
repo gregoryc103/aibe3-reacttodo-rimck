@@ -1,87 +1,80 @@
-import { useState } from 'react';
+// src/components/TodoItem.jsx
+import React from 'react'
+import { useTodoContext } from '../TodoContext'
 
-const TodoItem = ({ todo, onToggle, onEdit, onDelete }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(todo.text);
+function TodoItem({
+  todo,
+  onCheck,
+  onComplete,
+  onRemove,
+  priorities,
+  getAssigneeInfo,
+}) {
+  // Context에서 직접 상태 가져오기 (isChecked prop 대신)
+  const { checkedIds } = useTodoContext()
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
+  // isChecked를 직접 계산
+  const isChecked = checkedIds.includes(todo.id)
 
-  const handleSave = () => {
-    if (editText.trim()) {
-      onEdit(todo.id, editText.trim());
-      setIsEditing(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditText(todo.text);
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      handleCancel();
-    }
-  };
+  const assigneeInfo = getAssigneeInfo(todo.assignee)
+  const priorityInfo = priorities[todo.priority]
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm border border-gray-200 group hover:shadow-md transition-shadow">
+    <div className={`flex items-center gap-3 p-3 border-b border-gray-200 ${todo.completed ? 'bg-gray-50' : 'bg-white'}`}>
       <input
         type="checkbox"
-        checked={todo.completed}
-        onChange={() => onToggle(todo.id)}
-        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+        checked={isChecked}
+        onChange={() => onCheck(todo.id)}
+        style={{ transform: 'scale(1.2)' }}
       />
-      
+
       <div className="flex-1">
-        {isEditing ? (
-          <input
-            type="text"
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            autoFocus
-          />
-        ) : (
-          <span
-            className={`${
-              todo.completed
-                ? 'line-through text-gray-500'
-                : 'text-gray-800'
-            } cursor-pointer`}
-            onDoubleClick={handleEdit}
+        <div className={`text-sm font-mono ${todo.completed ? 'line-through text-gray-500' : 'text-black'}`}>
+          {todo.text}
+        </div>
+        <div className="flex gap-2 mt-2">
+          {todo.assignee && (
+            <span
+              className="px-2 py-1 text-xs font-bold text-white rounded border border-wood-brown"
+              style={{ backgroundColor: assigneeInfo.color }}
+            >
+              {assigneeInfo.name}
+            </span>
+          )}
+          <span 
+            className="px-2 py-1 text-xs font-bold text-white rounded border border-wood-brown"
+            style={{ backgroundColor: priorityInfo.color }}
           >
-            {todo.text}
+            {priorityInfo.label}
           </span>
-        )}
+          {todo.completed && (
+            <span className="px-2 py-1 text-xs font-bold text-white rounded border border-wood-brown bg-green-500">
+              완료
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        {!isEditing && (
-          <>
-            <button
-              onClick={handleEdit}
-              className="px-2 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
-            >
-              수정
-            </button>
-            <button
-              onClick={() => onDelete(todo.id)}
-              className="px-2 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-            >
-              삭제
-            </button>
-          </>
-        )}
+      <div className="flex gap-2">
+        <button
+          onClick={() => onComplete(todo.id)}
+          className={`px-3 py-1 text-sm font-bold border-2 border-wood-brown cursor-pointer font-mono uppercase transition-colors ${
+            todo.completed 
+              ? 'bg-warning text-black hover:bg-yellow-600' 
+              : 'bg-info text-black hover:bg-blue-600'
+          }`}
+        >
+          {todo.completed ? '↩️' : '✅'}
+        </button>
+        <button
+          onClick={() => onRemove(todo.id)}
+          className="px-3 py-1 text-sm font-bold border-2 border-wood-brown bg-danger text-black cursor-pointer font-mono uppercase hover:bg-red-600 transition-colors"
+        >
+          🗑️
+        </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default TodoItem;
+export default TodoItem
